@@ -1,0 +1,110 @@
+# PTG Chirality Configuration
+
+data:
+  # Meta-datasets for unified training
+  datasets:
+    - Cholec80
+    - CholecT50
+    - JIGSAWS
+    - SAR-RARP50
+  
+  # Observation and prediction rates
+  observation_rates: [0.2, 0.3, 0.5, 0.7, 0.9, 1.0]
+  prediction_rates: [0.1, 0.2, 0.3, 0.5]
+  
+  # Data paths
+  data_root: "D:/Datasets/"
+  feature_cache: "data/features/"
+
+grammar:
+  # N-gram mining
+  min_ngram_freq: 3
+  max_ngram_size: 4
+  
+  # Markov model
+  markov_order: 2
+  smoothing: 1.0e-5
+  
+  # Chirality
+  chirality_prior_boost: 1.2
+  
+  # Grammar scoring weights
+  lambda_o: 1.0  # object consistency
+  lambda_d: 1.0  # duration plausibility
+  lambda_r: 0.5  # goal orientation
+  
+  # Temperature for softmax
+  temperature: 1.0
+
+model:
+  # V-JEPA backbone
+  vjepa_variant: "vjepa2-vitl-fpc64-256"
+  vjepa_dim: 1024
+  freeze_vjepa: true
+  
+  # Projection
+  hidden_dim: 512
+  
+  # FUTR decoder
+  num_layers: 6
+  num_heads: 8
+  dim_feedforward: 2048
+  dropout: 0.1
+  
+  # Prediction heads
+  num_actions: 466  # 117 atomic + 349 composite
+  num_objects: 16   # Dataset-specific
+  num_goals: 8      # Optional
+
+training:
+  # General
+  num_epochs: 60
+  batch_size: 8
+  num_workers: 4
+  
+  # Optimizer
+  optimizer: AdamW
+  learning_rate: 1.0e-3
+  weight_decay: 1.0e-4
+  
+  # Scheduler
+  scheduler: cosine_annealing
+  warmup_epochs: 10
+  
+  # Phase 1: Supervised pre-training
+  pretrain_epochs: 30
+  
+  # Loss weights (Phase 1)
+  lambda_action: 1.0
+  lambda_dur: 1.0
+  lambda_obj: 1.0
+  lambda_goal: 1.0
+  
+  # Phase 2: Grammar regularization
+  lambda_gram: 0.5
+  grammar_mask_threshold: 1.0e-5  # Conflict masking
+  
+  # Checkpointing
+  save_interval: 5
+  eval_interval: 1
+
+inference:
+  # Earley parser
+  use_parser: true
+  beam_size: 5
+  max_horizon: 50
+  
+  # Temperature scaling
+  neural_temperature: 1.0
+  grammar_temperature: 1.0
+
+evaluation:
+  # Metrics
+  metrics:
+    - moc_accuracy  # Mean over Classes
+    - f1_score
+    - edit_distance
+    - chirality_f1
+  
+  # Horizons to evaluate
+  eval_horizons: [1, 5, 10, 20, 50]
